@@ -2,6 +2,7 @@ import os
 import tempfile
 import uuid
 from functools import wraps
+from google.cloud.datastore.query import PropertyFilter
 
 import firebase_admin
 from firebase_admin import credentials, auth
@@ -21,9 +22,16 @@ else:
 cred = credentials.Certificate("credentials.json")
 firebase_admin.initialize_app(cred)
 
-datastore_client = datastore.Client.from_service_account_json("credentials.json", project="cc-project-457519")
+datastore_client = datastore.Client.from_service_account_json("credentials.json", project="quizzapp-456810")
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:3000"])
+CORS(
+    app,
+    resources={r"/*": {"origins": "*"}},
+    allow_headers="*",
+    expose_headers="*",
+    supports_credentials=True,
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+)
 
 
 # curl -X POST -H "Content-Type: application/json" -d '{"email": "test@example.com", "password":"secret123"}' http://localhost:5000/register
@@ -124,7 +132,9 @@ def list_sets():
     """
     Returns all sets, authorization is required
     """
+    user_uid = request.user_uid
     query = datastore_client.query(kind='Set')
+    query.add_filter(filter=PropertyFilter('created_by', '=', user_uid))
     results = list(query.fetch())
     return jsonify(results), 200
 
